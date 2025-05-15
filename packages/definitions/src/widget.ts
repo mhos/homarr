@@ -24,5 +24,6 @@ export const widgetKinds = [
   "indexerManager",
   "healthMonitoring",
   "releases",
+  "upsMonitor",
 ] as const;
 export type WidgetKind = (typeof widgetKinds)[number];

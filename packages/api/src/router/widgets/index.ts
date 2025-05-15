@@ -16,6 +16,7 @@ import { releasesRouter } from "./releases";
 import { rssFeedRouter } from "./rssFeed";
 import { smartHomeRouter } from "./smart-home";
 import { stockPriceRouter } from "./stocks";
+import { upsMonitorRouter } from "./ups-monitor";
 import { weatherRouter } from "./weather";
 
 export const widgetRouter = createTRPCRouter({
@@ -25,6 +26,7 @@ export const widgetRouter = createTRPCRouter({
   dnsHole: dnsHoleRouter,
   smartHome: smartHomeRouter,
   stockPrice: stockPriceRouter,
+  upsMonitor: upsMonitorRouter,
   mediaServer: mediaServerRouter,
   calendar: calendarRouter,
   downloads: downloadsRouter,
