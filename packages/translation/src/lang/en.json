@@ -2145,6 +2145,30 @@
         }
       }
     },
+    "upsMonitor": {
+      "name": "UPS Monitor",
+      "description": "Displays UPS status and information using NUT (Network UPS Tools)",
+      "title": "UPS Status",
+      "option": {
+        "refreshInterval": {
+          "label": "Refresh Interval",
+          "description": "How often to refresh UPS data (in seconds)"
+        },
+        "showAdvanced": {
+          "label": "Show Advanced",
+          "description": "Show additional technical information"
+        }
+      },
+      "statusOnline": "Online",
+      "statusOnBattery": "On Battery",
+      "statusLowBattery": "Low Battery",
+      "batteryCharge": "Battery",
+      "load": "Load",
+      "runtime": "Runtime",
+      "inputVoltage": "Input Voltage",
+      "outputVoltage": "Output Voltage",
+      "temperature": "Temperature"
+    },
     "networkControllerSummary": {
       "option": {},
       "card": {
