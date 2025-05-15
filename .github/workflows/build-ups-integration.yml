@@ -7,6 +7,11 @@ on:
     branches: [ main, ups-monitor-integration ]
   workflow_dispatch:
 
+env:
+  FORCE_COLOR: 3
+  TURBO_TELEMETRY_DISABLED: 1
+  SKIP_ENV_VALIDATION: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,18 +19,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        
-    - name: Install pnpm
-      uses: pnpm/action-setup@v3
-      with:
-        version: 8
-        
-    - name: Install dependencies
-      run: pnpm install --frozen-lockfile
+    - name: Setup
+      uses: ./tooling/github/setup
+      
+    - name: Copy environment file
+      run: cp .env.example .env
       
     - name: Build project
       run: pnpm build
