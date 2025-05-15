@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Card, Group, Progress, Stack, Text, Badge, Title } from "@mantine/core";
+import { Box, Card, Group, Progress, Stack, Text, Badge, Title, Loader } from "@mantine/core";
 import { IconBolt, IconBattery, IconTemperature, IconPlugConnected } from "@tabler/icons-react";
 
 import { clientApi } from "@homarr/api/client";
@@ -8,31 +8,61 @@ import { useI18n } from "@homarr/translation/client";
 
 import type { WidgetComponentProps } from "../definition";
 
-export default function UpsMonitorWidget(props: WidgetComponentProps<"upsMonitor">) {
+export default function UpsMonitorWidget({ integrationIds }: WidgetComponentProps<"upsMonitor">) {
   const t = useI18n();
-  const [integrations] = clientApi.integration.byIds.useSuspenseQuery(props.integrationIds);
   
-  const upsIntegration = integrations.find((integration) => integration.kind === "upsMonitor");
-  
-  if (!upsIntegration) {
+  // Check if we have any integration IDs
+  if (!integrationIds || integrationIds.length === 0) {
     return (
-      <Card>
-        <Text>No UPS Monitor integration configured</Text>
+      <Card h="100%">
+        <Text c="dimmed">{t("widget.common.error.noIntegrationSelected")}</Text>
       </Card>
     );
   }
 
-  // Fetch UPS data using the integration
+  const { data: integrations, isLoading: integrationsLoading } = clientApi.integration.byIds.useQuery(integrationIds);
+  
+  const upsIntegration = integrations?.find((integration) => integration.kind === "upsMonitor");
+  
+  if (integrationsLoading) {
+    return (
+      <Card h="100%">
+        <Group justify="center" h="100%">
+          <Loader />
+        </Group>
+      </Card>
+    );
+  }
+  
+  if (!upsIntegration) {
+    return (
+      <Card h="100%">
+        <Text c="dimmed">No UPS Monitor integration found</Text>
+      </Card>
+    );
+  }
+
+  // Fetch UPS data using the first integration
   const { data, isLoading, error } = clientApi.widget.upsMonitor.getUpsStatus.useQuery({
-    integrationId: upsIntegration.id,
+    integrationId: integrationIds[0],
   });
 
   if (isLoading) {
-    return <Card><Text>Loading...</Text></Card>;
+    return (
+      <Card h="100%">
+        <Group justify="center" h="100%">
+          <Loader />
+        </Group>
+      </Card>
+    );
   }
 
   if (error || !data) {
-    return <Card><Text>Error loading UPS data</Text></Card>;
+    return (
+      <Card h="100%">
+        <Text c="dimmed">Error loading UPS data</Text>
+      </Card>
+    );
   }
 
   const upsData = data.upsData;
