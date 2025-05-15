@@ -1,5 +1,9 @@
 import { observable } from "@trpc/server/observable";
+import { z } from "zod";
 
+import { decryptSecret } from "@homarr/common/server";
+import { eq } from "@homarr/db";
+import { integrations } from "@homarr/db/schema";
 import type { UpsMonitorIntegration } from "@homarr/integrations";
 import { createIntegrationAsync } from "@homarr/integrations";
 
@@ -8,26 +12,51 @@ import { createTRPCRouter, publicProcedure } from "../../trpc";
 
 export const upsMonitorRouter = createTRPCRouter({
   getUpsStatus: publicProcedure
-    .concat(createOneIntegrationMiddleware("query", "upsMonitor"))
-    .query(async ({ ctx }) => {
-      const integration = await createIntegrationAsync({
-        ...ctx.integration,
+    .input(
+      z.object({
+        integrationId: z.string(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      // Get the integration from the database
+      const integration = await ctx.db.query.integrations.findFirst({
+        where: (integrations, { eq }) => eq(integrations.id, input.integrationId),
+        with: {
+          secrets: true,
+        },
+      });
+
+      if (!integration || integration.kind !== "upsMonitor") {
+        throw new Error("Invalid integration");
+      }
+
+      // Create the integration instance
+      const upsIntegration = await createIntegrationAsync({
+        ...integration,
         kind: "upsMonitor",
+        decryptedSecrets: integration.secrets.map((secret) => ({
+          ...secret,
+          value: decryptSecret(secret.value),
+        })),
       }) as UpsMonitorIntegration;
       
-      const status = await integration.getHealthMonitoringAsync();
+      const status = await upsIntegration.getHealthMonitoringAsync();
       
       return {
-        integrationId: ctx.integration.id,
-        integrationName: ctx.integration.name,
+        integrationId: integration.id,
+        integrationName: integration.name,
         upsData: status.upsData,
         updatedAt: new Date(),
       };
     }),
   
   subscribeUpsStatus: publicProcedure
-    .concat(createOneIntegrationMiddleware("query", "upsMonitor"))
-    .subscription(({ ctx }) => {
+    .input(
+      z.object({
+        integrationId: z.string(),
+      })
+    )
+    .subscription(({ input, ctx }) => {
       return observable<{
         integrationId: string;
         upsData: any;
@@ -36,15 +65,30 @@ export const upsMonitorRouter = createTRPCRouter({
         // Set up polling interval
         const intervalId = setInterval(async () => {
           try {
-            const integration = await createIntegrationAsync({
-              ...ctx.integration,
+            const integration = await ctx.db.query.integrations.findFirst({
+              where: (integrations, { eq }) => eq(integrations.id, input.integrationId),
+              with: {
+                secrets: true,
+              },
+            });
+
+            if (!integration || integration.kind !== "upsMonitor") {
+              return;
+            }
+
+            const upsIntegration = await createIntegrationAsync({
+              ...integration,
               kind: "upsMonitor",
+              decryptedSecrets: integration.secrets.map((secret) => ({
+                ...secret,
+                value: decryptSecret(secret.value),
+              })),
             }) as UpsMonitorIntegration;
             
-            const status = await integration.getHealthMonitoringAsync();
+            const status = await upsIntegration.getHealthMonitoringAsync();
             
             emit.next({
-              integrationId: ctx.integration.id,
+              integrationId: integration.id,
               upsData: status.upsData,
               timestamp: new Date(),
             });

@@ -7,42 +7,17 @@ import { clientApi } from "@homarr/api/client";
 import { useI18n } from "@homarr/translation/client";
 
 import type { WidgetComponentProps } from "../definition";
+import { NoIntegrationSelectedError } from "../errors/no-integration-selected";
 
 export default function UpsMonitorWidget({ integrationIds }: WidgetComponentProps<"upsMonitor">) {
   const t = useI18n();
   
   // Check if we have any integration IDs
   if (!integrationIds || integrationIds.length === 0) {
-    return (
-      <Card h="100%">
-        <Text c="dimmed">{t("widget.common.error.noIntegrationSelected")}</Text>
-      </Card>
-    );
+    throw new NoIntegrationSelectedError();
   }
 
-  const { data: integrations, isLoading: integrationsLoading } = clientApi.integration.byIds.useQuery(integrationIds);
-  
-  const upsIntegration = integrations?.find((integration) => integration.kind === "upsMonitor");
-  
-  if (integrationsLoading) {
-    return (
-      <Card h="100%">
-        <Group justify="center" h="100%">
-          <Loader />
-        </Group>
-      </Card>
-    );
-  }
-  
-  if (!upsIntegration) {
-    return (
-      <Card h="100%">
-        <Text c="dimmed">No UPS Monitor integration found</Text>
-      </Card>
-    );
-  }
-
-  // Fetch UPS data using the first integration
+  // Fetch UPS data using the first integration ID
   const { data, isLoading, error } = clientApi.widget.upsMonitor.getUpsStatus.useQuery({
     integrationId: integrationIds[0],
   });
@@ -57,7 +32,7 @@ export default function UpsMonitorWidget({ integrationIds }: WidgetComponentProp
     );
   }
 
-  if (error || !data) {
+  if (error || !data || !data.upsData) {
     return (
       <Card h="100%">
         <Text c="dimmed">Error loading UPS data</Text>
