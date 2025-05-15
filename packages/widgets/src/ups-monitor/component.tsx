@@ -7,20 +7,31 @@ import { clientApi } from "@homarr/api/client";
 import { useI18n } from "@homarr/translation/client";
 
 import type { WidgetComponentProps } from "../definition";
-import { NoIntegrationSelectedError } from "../errors/no-integration-selected";
 
 export default function UpsMonitorWidget({ integrationIds }: WidgetComponentProps<"upsMonitor">) {
   const t = useI18n();
   
+  // Debug logging
+  console.log("UPS Monitor Widget - Integration IDs:", integrationIds);
+  
   // Check if we have any integration IDs
   if (!integrationIds || integrationIds.length === 0) {
-    throw new NoIntegrationSelectedError();
+    return (
+      <Card h="100%">
+        <Text c="dimmed">No integration selected. Please select a UPS Monitor integration.</Text>
+      </Card>
+    );
   }
 
   // Fetch UPS data using the first integration ID
-  const { data, isLoading, error } = clientApi.widget.upsMonitor.getUpsStatus.useQuery({
-    integrationId: integrationIds[0],
-  });
+  const { data, isLoading, error } = clientApi.widget.upsMonitor.getUpsStatus.useQuery(
+    {
+      integrationId: integrationIds[0],
+    },
+    {
+      enabled: integrationIds.length > 0 && !!integrationIds[0],
+    }
+  );
 
   if (isLoading) {
     return (
@@ -32,17 +43,28 @@ export default function UpsMonitorWidget({ integrationIds }: WidgetComponentProp
     );
   }
 
-  if (error || !data || !data.upsData) {
+  if (error) {
+    console.error("UPS Monitor Widget Error:", error);
     return (
       <Card h="100%">
-        <Text c="dimmed">Error loading UPS data</Text>
+        <Text c="dimmed">Error loading UPS data: {error.message}</Text>
+      </Card>
+    );
+  }
+
+  if (!data || !data.upsData) {
+    return (
+      <Card h="100%">
+        <Text c="dimmed">No UPS data available</Text>
       </Card>
     );
   }
 
   const upsData = data.upsData;
+  console.log("UPS Data:", upsData);
 
   const getStatusBadgeColor = (status: string) => {
+    if (!status) return "gray";
     if (status.includes("OL")) return "green"; // Online
     if (status.includes("OB")) return "yellow"; // On Battery
     if (status.includes("LB")) return "red"; // Low Battery
@@ -50,6 +72,7 @@ export default function UpsMonitorWidget({ integrationIds }: WidgetComponentProp
   };
 
   const getStatusText = (status: string) => {
+    if (!status) return "Unknown";
     if (status.includes("OL")) return t("widget.upsMonitor.statusOnline");
     if (status.includes("OB")) return t("widget.upsMonitor.statusOnBattery");
     if (status.includes("LB")) return t("widget.upsMonitor.statusLowBattery");
@@ -57,6 +80,7 @@ export default function UpsMonitorWidget({ integrationIds }: WidgetComponentProp
   };
 
   const formatRuntime = (seconds: number) => {
+    if (!seconds || isNaN(seconds)) return "N/A";
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
@@ -82,9 +106,9 @@ export default function UpsMonitorWidget({ integrationIds }: WidgetComponentProp
                 <IconBattery size={16} />
                 <Text size="sm">{t("widget.upsMonitor.batteryCharge")}</Text>
               </Group>
-              <Text size="sm" fw={500}>{upsData.batteryCharge}%</Text>
+              <Text size="sm" fw={500}>{upsData.batteryCharge || 0}%</Text>
             </Group>
-            <Progress value={upsData.batteryCharge} color="green" />
+            <Progress value={upsData.batteryCharge || 0} color="green" />
           </Box>
 
           <Box>
@@ -93,9 +117,9 @@ export default function UpsMonitorWidget({ integrationIds }: WidgetComponentProp
                 <IconPlugConnected size={16} />
                 <Text size="sm">{t("widget.upsMonitor.load")}</Text>
               </Group>
-              <Text size="sm" fw={500}>{upsData.load}%</Text>
+              <Text size="sm" fw={500}>{upsData.load || 0}%</Text>
             </Group>
-            <Progress value={upsData.load} color="blue" />
+            <Progress value={upsData.load || 0} color="blue" />
           </Box>
 
           <Group justify="space-between">
@@ -105,12 +129,12 @@ export default function UpsMonitorWidget({ integrationIds }: WidgetComponentProp
 
           <Group justify="space-between">
             <Text size="sm">{t("widget.upsMonitor.inputVoltage")}</Text>
-            <Text size="sm" fw={500}>{upsData.inputVoltage}V</Text>
+            <Text size="sm" fw={500}>{upsData.inputVoltage || 0}V</Text>
           </Group>
 
           <Group justify="space-between">
             <Text size="sm">{t("widget.upsMonitor.outputVoltage")}</Text>
-            <Text size="sm" fw={500}>{upsData.outputVoltage}V</Text>
+            <Text size="sm" fw={500}>{upsData.outputVoltage || 0}V</Text>
           </Group>
 
           {upsData.temperature && (
@@ -125,8 +149,8 @@ export default function UpsMonitorWidget({ integrationIds }: WidgetComponentProp
         </Stack>
 
         <Group justify="space-between" mt="sm">
-          <Text size="xs" c="dimmed">{upsData.manufacturer}</Text>
-          <Text size="xs" c="dimmed">{upsData.model}</Text>
+          <Text size="xs" c="dimmed">{upsData.manufacturer || "Unknown"}</Text>
+          <Text size="xs" c="dimmed">{upsData.model || "Unknown"}</Text>
         </Group>
       </Stack>
     </Card>
